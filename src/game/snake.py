@@ -33,19 +33,22 @@ class Snake:
         x, y = direction.value
 
         # Prevent the snake from reversing
-        if self.x_dir * x == 0 and self.y_dir * y == 0:
+        if (self.x_dir, self.y_dir) != (-x, -y):
             self.x_dir, self.y_dir = x, y
 
     @property
     def is_dead(self) -> bool:
-        for segment in self.body:
-            if self.head.x == segment.x and self.head.y == segment.y:
-                return True
-            if self.head.x not in range(conf.window.width) or self.head.y not in range(
-                conf.window.height
-            ):
-                return True
-        return False
+        # Boundary collision check
+        if self.head.x not in range(conf.window.width) or self.head.y not in range(
+            conf.window.height
+        ):
+            return True
+
+        # Self-collision check
+        return any(
+            self.head.x == segment.x and self.head.y == segment.y
+            for segment in self.body
+        )
 
     def move(self):
         self.body.append(self.head)

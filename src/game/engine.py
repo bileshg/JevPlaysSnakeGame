@@ -1,3 +1,4 @@
+import atexit
 import random
 import sys
 import tkinter as tk
@@ -12,6 +13,12 @@ from src.game.food import Food
 from src.game.snake import Snake
 from src.utils.config import conf
 
+_TK_ROOT = tk.Tk()
+_TK_ROOT.attributes("-topmost", True)
+_TK_ROOT.withdraw()
+
+atexit.register(_TK_ROOT.destroy)
+
 
 @dataclass(frozen=True)
 class GameState:
@@ -25,15 +32,6 @@ class Agent(Protocol):
     def update(self, game_state: GameState) -> None: ...
 
     def get_direction(self) -> Direction | None: ...
-
-
-def message_box(subject: str, content: str) -> bool:
-    root = tk.Tk()
-    root.attributes("-topmost", True)
-    root.withdraw()
-    response = messagebox.askyesno(subject, content)
-    root.destroy()
-    return response
 
 
 def draw_grid(screen: pygame.Surface):
@@ -53,12 +51,15 @@ def draw_grid(screen: pygame.Surface):
 
 
 def random_empty_block(snake: Snake) -> tuple[int, int]:
-    while True:
+    max_attempts = conf.game.cols * conf.game.rows * 2
+    for _ in range(max_attempts):
         x = random.randint(0, conf.game.cols - 1) * conf.block.width
         y = random.randint(0, conf.game.rows - 1) * conf.block.height
 
         if not any(block.x == x and block.y == y for block in snake.body):
             return x, y
+
+    raise RuntimeError("Failed to find an empty block for the food.")
 
 
 def create_food(snake: Snake) -> Food:
@@ -112,8 +113,10 @@ def game_loop(
         clock.tick(conf.game.tick)
         handle_quit()
 
-        if len(snake.body) == conf.game.cols * conf.game.rows:
-            if _ := message_box("Wow! You Won!", "Do you want to play again?"):
+        if len(snake.body) == conf.game.cols * conf.game.rows - 1:
+            if _ := messagebox.askyesno(
+                "Wow! You Won!", "Do you want to play again?", parent=_TK_ROOT
+            ):
                 snake.reset()
                 food = create_food(snake)
             else:
@@ -125,7 +128,9 @@ def game_loop(
             snake.set_direction(direction)
 
         if snake.is_dead:
-            if _ := message_box("You Lost!", "Do you want to play again?"):
+            if _ := messagebox.askyesno(
+                "You Lost!", "Do you want to play again?", parent=_TK_ROOT
+            ):
                 snake.reset()
                 food = create_food(snake)
             else:

@@ -1,9 +1,12 @@
 import json
+import logging
 
 from typesafe_sdk import Choice, TypeSafeClient
 
 from src.game.direction import Direction
 from src.game.engine import Agent, GameState
+
+logger = logging.getLogger(__name__)
 
 INSTRUCTIONS = (
     "Play Snake and try to get a high score. Choose UP, DOWN, LEFT, or RIGHT for the next move. "
@@ -49,9 +52,13 @@ class JevAgent(Agent):
         self.game_state = game_state
 
     def get_direction(self) -> Direction | None:
-        with TypeSafeClient() as client:
-            response = client.system_one(
-                state=self.format_game_state(),
-                questions=SCHEMA,
-            )
-            return Direction[response.answers["move"].choice]  # type: ignore
+        try:
+            with TypeSafeClient() as client:
+                response = client.system_one(
+                    state=self.format_game_state(),
+                    questions=SCHEMA,
+                )
+                return Direction[response.answers["move"].choice]  # type: ignore
+        except Exception as e:
+            logger.error("Error getting direction: %s", e)
+            return None
