@@ -1,14 +1,30 @@
-import sys
-import pygame
 import random
-
+import sys
 import tkinter as tk
+from dataclasses import dataclass
 from tkinter import messagebox
+from typing import Protocol
 
-from src.utils.config import conf
+import pygame
+
 from src.game.direction import Direction
-from src.game.snake import Snake
 from src.game.food import Food
+from src.game.snake import Snake
+from src.utils.config import conf
+
+
+@dataclass(frozen=True)
+class GameState:
+    board_rows: int
+    board_cols: int
+    snake: Snake
+    food: Food
+
+
+class Agent(Protocol):
+    def update(self, game_state: GameState) -> None: ...
+
+    def get_direction(self) -> Direction | None: ...
 
 
 def message_box(subject: str, content: str) -> bool:
@@ -25,7 +41,9 @@ def draw_grid(screen: pygame.Surface):
 
     x = 0
     for _ in range(conf.game.cols):
-        pygame.draw.line(screen, conf.window.grid.color, (x, 0), (x, conf.window.height))
+        pygame.draw.line(
+            screen, conf.window.grid.color, (x, 0), (x, conf.window.height)
+        )
         x += conf.block.width
 
     y = 0
@@ -52,38 +70,38 @@ def end_game():
     sys.exit()
 
 
-def handle_events(snake: Snake):
+def handle_quit():
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             end_game()
-        if event.type == pygame.KEYDOWN:
-            handle_keydown(event, snake)
 
 
-def handle_keydown(event, snake: Snake):
-    if event.key in [pygame.K_DOWN, pygame.K_s]:
-        snake.set_direction(Direction.DOWN)
-    elif event.key in [pygame.K_UP, pygame.K_w]:
-        snake.set_direction(Direction.UP)
-    elif event.key in [pygame.K_RIGHT, pygame.K_d]:
-        snake.set_direction(Direction.RIGHT)
-    elif event.key in [pygame.K_LEFT, pygame.K_a]:
-        snake.set_direction(Direction.LEFT)
-    elif event.key == pygame.K_ESCAPE:
-        if response := message_box(
-                'Quit!', 'Do you want to quit?'
-        ):
-            end_game()
-
-
-def update_score(screen: pygame.Surface, font: pygame.font.Font, score_panel: pygame.Rect, snake: Snake):
+def update_score(
+    screen: pygame.Surface,
+    font: pygame.font.Font,
+    score_panel: pygame.Rect,
+    snake: Snake,
+):
     score = font.render(f"{len(snake.body) - 1}", True, conf.font.color)
     screen.blit(score, score_panel)
 
 
-def game_loop(screen: pygame.Surface, font: pygame.font.Font, clock: pygame.time.Clock):
+def get_game_state(snake: Snake, food: Food) -> GameState:
+    return GameState(
+        board_rows=conf.game.rows, board_cols=conf.game.cols, snake=snake, food=food
+    )
+
+
+def game_loop(
+    screen: pygame.Surface,
+    font: pygame.font.Font,
+    clock: pygame.time.Clock,
+    agent: Agent,
+):
     score = font.render("0", True, conf.font.color)
-    score_panel = score.get_rect(center=(conf.window.width / 2, conf.window.height / 20))
+    score_panel = score.get_rect(
+        center=(conf.window.width / 2, conf.window.height / 20)
+    )
 
     snake = Snake()
     food = create_food(snake)
@@ -92,22 +110,22 @@ def game_loop(screen: pygame.Surface, font: pygame.font.Font, clock: pygame.time
 
     while True:
         clock.tick(conf.game.tick)
+        handle_quit()
 
         if len(snake.body) == conf.game.cols * conf.game.rows:
-            if response := message_box(
-                    'Wow! You Won!', 'Do you want to play again?'
-            ):
+            if _ := message_box("Wow! You Won!", "Do you want to play again?"):
                 snake.reset()
                 food = create_food(snake)
             else:
                 end_game()
 
-        handle_events(snake)
+        state = get_game_state(snake, food)
+        agent.update(state)
+        if direction := agent.get_direction():
+            snake.set_direction(direction)
 
-        if snake.is_dead():
-            if response := message_box(
-                    'You Lost!', 'Do you want to play again?'
-            ):
+        if snake.is_dead:
+            if _ := message_box("You Lost!", "Do you want to play again?"):
                 snake.reset()
                 food = create_food(snake)
             else:

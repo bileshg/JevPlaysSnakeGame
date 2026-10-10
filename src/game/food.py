@@ -1,4 +1,3 @@
-import random
 import pygame
 
 from src.utils.config import conf
@@ -11,3 +10,9 @@ class Food:
 
     def draw(self, screen: pygame.Surface):
         pygame.draw.rect(screen, conf.game.food.color, self.rect)
+
+    def get_state(self) -> dict:
+        return {
+            "x": self.x,
+            "y": self.y,
+        }

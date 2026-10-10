@@ -215,6 +215,9 @@ celerybeat.pid
 
 # Environments
 .env
+.env.*
+# Keep the example environment file in version control
+!.env.example
 #.venv
 env/
 venv/
