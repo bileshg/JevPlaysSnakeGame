@@ -1,10 +1,10 @@
 import pygame
 
-from src.utils.config import conf
 from src.game.engine import game_loop
+from src.utils.config import conf
 
 
-def main():
+def run_game():
     pygame.init()
 
     screen = pygame.display.set_mode((conf.window.width, conf.window.height))
@@ -14,7 +14,3 @@ def main():
     pygame.display.set_caption(conf.window.title)
 
     game_loop(screen, font, clock)
-
-
-if __name__ == "__main__":
-    main()
